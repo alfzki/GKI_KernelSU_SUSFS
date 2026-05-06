@@ -438,10 +438,8 @@ jobs:
             fi
             # Syntax fix for event.c (remove potential stray brace at end of file)
             if [ -f "./drivers/kernelsu/sulog/event.c" ]; then
-              if [ "$(tail -n 1 ./drivers/kernelsu/sulog/event.c)" = "{" ]; then
-                echo "Removing stray brace at end of event.c"
-                sed -i '$d' ./drivers/kernelsu/sulog/event.c
-              fi
+              echo "Robust syntax fix for event.c..."
+              python3 -c "import sys; p = sys.argv[1]; c = open(p).read(); open(p, 'w').write(c.rstrip()[:-1] if c.rstrip().endswith('{') else c)" ./drivers/kernelsu/sulog/event.c
             fi
           fi
 
