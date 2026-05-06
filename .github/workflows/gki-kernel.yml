@@ -203,6 +203,68 @@ jobs:
             patch -p1 < fix_5.15.legacy.patch
           fi
 
+      - name: Kernel patching (SysVIPC & POSIX_MQUEUE)
+        run: |
+          echo "更改为配置目录: $CONFIG/common..."
+          cd "$CONFIG/common"
+
+          KERNEL_VERSION="${{ inputs.kernel_version }}"
+
+          if [ "$KERNEL_VERSION" = "5.10" ] || [ "$KERNEL_VERSION" = "5.4" ]; then
+            echo "Applying patches for kernel 5.10 or lower..."
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o 001.patch
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch" -o 002.patch
+            patch -p1 < 001.patch || true
+            patch -p1 < 002.patch || true
+          elif [ "$KERNEL_VERSION" = "5.15" ] || [ "$KERNEL_VERSION" = "6.1" ] || [ "$KERNEL_VERSION" = "6.6" ]; then
+            echo "Applying patches for kernel 5.15 to 6.6..."
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o 001.patch
+            patch -p1 < 001.patch || true
+          elif [[ "$KERNEL_VERSION" == 6.1[2-9]* ]] || [[ "$KERNEL_VERSION" == [7-9]* ]]; then
+             echo "Applying patches for kernel 6.12 or above..."
+             curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/kernel-6.12/001.GKI-6.12-or-above-fix_sysvipc_kabi.patch" -o 001.patch
+             patch -p1 < 001.patch || true
+          fi
+
+      - name: 修改 gki_defconfig (IPC/Namespaces/Docker/UFW/Fail2ban)
+        run: |
+          echo "更改为配置目录: $CONFIG/common..."
+          cd "$CONFIG/common"
+          CONFIG_FILE="arch/arm64/configs/gki_defconfig"
+
+          declare -A configs=(
+            ["CONFIG_SYSVIPC"]="CONFIG_CGROUPS"
+            ["CONFIG_POSIX_MQUEUE"]="CONFIG_CGROUPS"
+            ["CONFIG_IPC_NS"]="CONFIG_NAMESPACES"
+            ["CONFIG_PID_NS"]="CONFIG_NAMESPACES"
+            ["CONFIG_DEVTMPFS"]="CONFIG_TMPFS"
+            ["CONFIG_NETFILTER_XT_MATCH_ADDRTYPE"]="CONFIG_NETFILTER"
+            ["CONFIG_NETFILTER_XT_TARGET_REJECT"]="CONFIG_NETFILTER"
+            ["CONFIG_NETFILTER_XT_TARGET_LOG"]="CONFIG_NETFILTER"
+            ["CONFIG_NETFILTER_XT_MATCH_RECENT"]="CONFIG_NETFILTER"
+            ["CONFIG_IP_SET"]="CONFIG_NETFILTER"
+            ["CONFIG_IP_SET_HASH_IP"]="CONFIG_IP_SET"
+            ["CONFIG_IP_SET_HASH_NET"]="CONFIG_IP_SET"
+            ["CONFIG_NETFILTER_XT_SET"]="CONFIG_NETFILTER"
+          )
+
+          for config in "${!configs[@]}"; do
+            anchor="${configs[$config]}"
+            if grep -q "^# $config is not set" "$CONFIG_FILE"; then
+              sed -i "s/^# $config is not set/$config=y/" "$CONFIG_FILE"
+            elif grep -q "^$config=y" "$CONFIG_FILE"; then
+              echo "$config is already set to y."
+            else
+              echo "$config not found, injecting after $anchor (if present)..."
+              if grep -q "^$anchor=" "$CONFIG_FILE" || grep -q "^# $anchor is not set" "$CONFIG_FILE"; then
+                sed -i "/^$anchor=\|^# $anchor is not set/a $config=y" "$CONFIG_FILE"
+              else
+                echo "Warning: Anchor $anchor not found for $config. Appending."
+                echo "$config=y" >> "$CONFIG_FILE"
+              fi
+            fi
+          done
+
       - name: 使GKI在一加8E平台正常使用
         if: ${{ inputs.supp_op }}
         run: |
