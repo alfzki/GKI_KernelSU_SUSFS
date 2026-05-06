@@ -429,6 +429,22 @@ jobs:
           cd "$CONFIG/common"
           FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}"
 
+          # Fix SukiSU KernelSU compilation errors
+          if [ -d "./drivers/kernelsu" ]; then
+            echo "Fixing SukiSU KernelSU errors..."
+            # Visibility fix for struct user_arg_ptr
+            if [ -f "./drivers/kernelsu/feature/adb_root.h" ]; then
+              sed -i '1i struct user_arg_ptr;' ./drivers/kernelsu/feature/adb_root.h
+            fi
+            # Syntax fix for event.c (remove potential stray brace at end of file)
+            if [ -f "./drivers/kernelsu/sulog/event.c" ]; then
+              if [ "$(tail -n 1 ./drivers/kernelsu/sulog/event.c)" = "{" ]; then
+                echo "Removing stray brace at end of event.c"
+                sed -i '$d' ./drivers/kernelsu/sulog/event.c
+              fi
+            fi
+          fi
+
           # Fix unused variable 'dentry' and unused label 'bypass' in task_mmu.c
           if [ -f "./fs/proc/task_mmu.c" ]; then
             echo "Fixing unused variable/label in task_mmu.c..."
