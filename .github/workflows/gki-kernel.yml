@@ -210,16 +210,35 @@ jobs:
 
           KERNEL_VERSION="${{ inputs.kernel_version }}"
 
+          apply_sysvipc_patch() {
+            echo "Downloading SysVIPC patches..."
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_1_2_3.patch" -o 001_123.patch
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_3_4_5.patch" -o 001_345.patch
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o 001_678.patch
+            
+            if patch -p1 --forward --dry-run < 001_123.patch >/dev/null 2>&1; then
+              patch -p1 --forward < 001_123.patch
+              echo "Applied 1_2_3 padding successfully."
+            elif patch -p1 --forward --dry-run < 001_345.patch >/dev/null 2>&1; then
+              patch -p1 --forward < 001_345.patch
+              echo "Applied 3_4_5 padding successfully."
+            elif patch -p1 --forward --dry-run < 001_678.patch >/dev/null 2>&1; then
+              patch -p1 --forward < 001_678.patch
+              echo "Applied 6_7_8 padding successfully."
+            else
+              echo "Warning: Clean patch failed. Force applying 6_7_8 with fuzz."
+              patch -p1 --forward --fuzz=3 < 001_678.patch || true
+            fi
+          }
+
           if [ "$KERNEL_VERSION" = "5.10" ] || [ "$KERNEL_VERSION" = "5.4" ]; then
             echo "Applying patches for kernel 5.10 or lower..."
-            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o 001.patch
+            apply_sysvipc_patch
             curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch" -o 002.patch
-            patch -p1 < 001.patch || true
             patch -p1 < 002.patch || true
           elif [ "$KERNEL_VERSION" = "5.15" ] || [ "$KERNEL_VERSION" = "6.1" ] || [ "$KERNEL_VERSION" = "6.6" ]; then
             echo "Applying patches for kernel 5.15 to 6.6..."
-            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o 001.patch
-            patch -p1 < 001.patch || true
+            apply_sysvipc_patch
           elif [[ "$KERNEL_VERSION" == 6.1[2-9]* ]] || [[ "$KERNEL_VERSION" == [7-9]* ]]; then
              echo "Applying patches for kernel 6.12 or above..."
              curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/kernel-6.12/001.GKI-6.12-or-above-fix_sysvipc_kabi.patch" -o 001.patch
@@ -409,6 +428,14 @@ jobs:
         run: |
           cd "$CONFIG/common"
           FORMATTED_BRANCH="${{ inputs.android_version }}-${{ inputs.kernel_version }}"
+
+          # Fix unused variable 'dentry' and unused label 'bypass' in task_mmu.c
+          if [ -f "./fs/proc/task_mmu.c" ]; then
+            echo "Fixing unused variable/label in task_mmu.c..."
+            sed -i 's/struct dentry \*dentry;/struct dentry \*dentry __attribute__((unused));/g' ./fs/proc/task_mmu.c
+            sed -i 's/bypass:/bypass: __attribute__((unused))/g' ./fs/proc/task_mmu.c
+          fi
+
           # Fake Patch to fix failures
           fake_patched=0
           if [ "$FORMATTED_BRANCH" = "android15-6.6" ]; then
