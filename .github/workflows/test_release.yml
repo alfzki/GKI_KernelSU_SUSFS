@@ -23,7 +23,7 @@ on:
           or "all" to build every kernel.
         required: true
         type: string
-        default: 'all'
+        default: 'a14-6.1'
       kernelsu_variant:
         description: "Select KernelSU"
         required: true
@@ -34,7 +34,7 @@ on:
         - MKSU
         - SukiSU
         - ReSukiSU
-        default: SukiSU
+        default: ReSukiSU
       kernelsu_branch:
         description: "Select KSU branch"
         required: true

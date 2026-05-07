@@ -203,6 +203,42 @@ jobs:
             patch -p1 < fix_5.15.legacy.patch
           fi
 
+      - name: Kernel kABI patching
+        run: |
+          echo "更改为配置目录: $CONFIG..."
+          cd "$CONFIG/common"
+          
+          KERNEL_VER="${{ inputs.kernel_version }}"
+          
+          # Helper function for version comparison
+          version_ge() { [ "$1" = "$(echo -e "$1\n$2" | sort -V | tail -n1)" ]; }
+          
+          if version_ge "$KERNEL_VER" "6.12"; then
+            echo "Applying SYSVIPC kABI fix for 6.12 and above"
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/kernel-6.12/001.GKI-6.12-or-above-fix_sysvipc_kabi.patch" -o 001_sysvipc.patch
+            patch -p1 < 001_sysvipc.patch || true
+          else
+            echo "Applying SYSVIPC kABI fix for below 6.12"
+            curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o patch1.patch
+            curl -LSs "https://github.com/ravindu644/Droidspaces-OSS/raw/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_3_4_5.patch" -o patch2.patch
+            curl -LSs "https://github.com/ravindu644/Droidspaces-OSS/raw/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_1_2_3.patch" -o patch3.patch
+            
+            if ! patch -p1 --forward < patch1.patch; then
+              echo "First patch failed, trying second..."
+              if ! patch -p1 --forward < patch2.patch; then
+                echo "Second patch failed, trying third..."
+                patch -p1 --forward < patch3.patch || true
+              fi
+            fi
+            
+            # 5.10 and below check (if kernel is strictly less than 5.15)
+            if ! version_ge "$KERNEL_VER" "5.15"; then
+              echo "Applying POSIX_MQUEUE kABI fix for 5.10 and below"
+              curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/refs/heads/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch" -o 002_posix.patch
+              patch -p1 < 002_posix.patch || true
+            fi
+          fi
+
       - name: 使GKI在一加8E平台正常使用
         if: ${{ inputs.supp_op }}
         run: |
@@ -555,6 +591,39 @@ jobs:
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
+
+      - name: 编辑 gki_defconfig
+        run: |
+          echo "更改为配置目录: $CONFIG..."
+          CONFIG_FILE="$CONFIG/common/arch/arm64/configs/gki_defconfig"
+          
+          CONFIGS=(
+            "CONFIG_SYSVIPC"
+            "CONFIG_POSIX_MQUEUE"
+            "CONFIG_IPC_NS"
+            "CONFIG_PID_NS"
+            "CONFIG_DEVTMPFS"
+            "CONFIG_NETFILTER_XT_MATCH_ADDRTYPE"
+            "CONFIG_NETFILTER_XT_TARGET_REJECT"
+            "CONFIG_NETFILTER_XT_TARGET_LOG"
+            "CONFIG_NETFILTER_XT_MATCH_RECENT"
+            "CONFIG_IP_SET"
+            "CONFIG_IP_SET_HASH_IP"
+            "CONFIG_IP_SET_HASH_NET"
+            "CONFIG_NETFILTER_XT_SET"
+          )
+          
+          for conf in "${CONFIGS[@]}"; do
+            if grep -q "^${conf}=y" "$CONFIG_FILE"; then
+              echo "${conf} is already set"
+            elif grep -q "^# ${conf} is not set" "$CONFIG_FILE"; then
+              sed -i "s/^# ${conf} is not set/${conf}=y/" "$CONFIG_FILE"
+              echo "Uncommented and set ${conf}=y"
+            else
+              echo "${conf}=y" >> "$CONFIG_FILE"
+              echo "Appended ${conf}=y"
+            fi
+          done
 
       - name: 配置内核名称
         run: |
