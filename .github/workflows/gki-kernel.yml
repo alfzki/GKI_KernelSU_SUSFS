@@ -328,9 +328,9 @@ jobs:
             echo "Applying SukiSU specific SUSFS patch..."
             # Fix upstream SukiSU bugs
             echo "Fixing SukiSU sucompat.c unterminated #ifdef"
-            [ -f "kernel/feature/sucompat.c" ] && echo "#endif" >> kernel/feature/sucompat.c
+            echo "#endif" >> ./feature/sucompat.c
             echo "Fixing SukiSU event.c ksu_sulog_capture type mismatch"
-            [ -f "kernel/sulog/event.c" ] && sed -i 's/pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL, gfp);/pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, NULL, gfp);/g' kernel/sulog/event.c
+            sed -i 's/pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL, gfp);/pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, NULL, gfp);/g' ./sulog/event.c
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
