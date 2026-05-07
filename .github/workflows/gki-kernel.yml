@@ -324,8 +324,13 @@ jobs:
             patch -p1 < fix.patch || true
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "Applying SUSFS patches for SukiSU..."
-             cd ./KernelSU
+            cd ./KernelSU
             echo "Applying SukiSU specific SUSFS patch..."
+            # Fix upstream SukiSU bugs
+            echo "Fixing SukiSU sucompat.c unterminated #ifdef"
+            echo "#endif" >> ./feature/sucompat.c
+            echo "Fixing SukiSU event.c ksu_sulog_capture type mismatch"
+            sed -i 's/pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, USER_ARG_NULL, gfp);/pending = ksu_sulog_capture(KSU_SULOG_EVENT_IOCTL_GRANT_ROOT, NULL, NULL, gfp);/g' ./sulog/event.c
           else
             echo "Invalid KernelSU variant selected!"
             exit 1
