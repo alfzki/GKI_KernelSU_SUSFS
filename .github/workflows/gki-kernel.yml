@@ -439,7 +439,21 @@ jobs:
             # Syntax fix for event.c (remove potential stray brace at end of file)
             if [ -f "./drivers/kernelsu/sulog/event.c" ]; then
               echo "Robust syntax fix for event.c..."
-              python3 -c 'import sys; p = sys.argv[1]; c = open(p).read(); open(p, "w").write(c.rstrip()[:-1] if c.rstrip().endswith("{") else c)' ./drivers/kernelsu/sulog/event.c
+              python3 -c '
+import sys
+p = sys.argv[1]
+with open(p, "r") as f:
+    c = f.read()
+if "#endif\n{" in c:
+    c = c.replace("#endif\n{", "{", 1)
+    idx = c.find("static struct ksu_sulog_pending_event *ksu_sulog_capture_grant_root")
+    if idx != -1:
+        c = c[:idx] + "#endif\n\n" + c[idx:]
+if c.rstrip().endswith("{"):
+    c = c.rstrip()[:-1] + "\n"
+with open(p, "w") as f:
+    f.write(c)
+' ./drivers/kernelsu/sulog/event.c
             fi
           fi
 
