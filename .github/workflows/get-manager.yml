@@ -42,6 +42,14 @@ jobs:
             KSU_VERSION=$((10000 + KSU_GIT_VERSION + 700))
             echo $KSU_VERSION
             echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
+          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
+            echo "This is the ReSukiSU variant"
+            git clone https://github.com/ReSukiSU/ReSukiSU.git
+            cd ReSukiSU
+            KSU_GIT_VERSION=$(git rev-list --count HEAD)
+            KSU_VERSION=$((10000 + KSU_GIT_VERSION + 800))
+            echo $KSU_VERSION
+            echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
           else
             echo "Unknown variant"
           fi
@@ -55,6 +63,10 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "SukiSU..."
             REPO="SukiSU-Ultra/SukiSU-Ultra"
+            FILENAME="build-manager.yml"
+          elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
+            echo "ReSukiSU..."
+            REPO="ReSukiSU/ReSukiSU"
             FILENAME="build-manager.yml"
           fi
 
@@ -70,7 +82,7 @@ jobs:
           # 获取 Manager 文件的下载链接
           if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             DOWNLOAD_URL=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name | contains("Manager")) | .archive_download_url')
-          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
+          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ] || [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
             DOWNLOAD_URL=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name | contains("Manager")) | .archive_download_url')
           fi
 
