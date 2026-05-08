@@ -408,6 +408,18 @@ jobs:
               echo "未找到 #include <linux/dma-buf.h>，添加缺失的头文件"
               sed -i '/#include <linux\/cpufreq_times.h>/a #include <linux\/dma-buf.h>' ./fs/proc/base.c
             fi
+            if ! grep -q 'susfs_def.h' ./fs/namespace.c; then
+              echo "未找到 susfs_def.h，正在修复 namespace.c 的头部声明"
+              printf "\n#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\n#include <linux/susfs_def.h>\nextern bool susfs_is_current_ksu_domain(void);\nextern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\n#define CL_COPY_MNT_NS BIT(25)\n#endif\n" > namespace_headers.txt
+              sed -i '/#include "internal.h"/r namespace_headers.txt' ./fs/namespace.c
+              rm namespace_headers.txt
+            fi
+            if ! grep -q 'DEFAULT_KSU_MNT_GROUP_ID' ./fs/namespace.c; then
+              echo "未找到 DEFAULT_KSU_MNT_GROUP_ID，正在修复 namespace.c"
+              printf "\n#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\n#define DEFAULT_KSU_MNT_GROUP_ID (9000000)\n#define DEFAULT_KSU_MNT_ID (9000000)\nextern struct ida mnt_id_ida;\nextern struct ida mnt_group_ida;\n#endif\n" > namespace_vars.txt
+              sed -i '/LIST_HEAD(ex_mounts);/r namespace_vars.txt' ./fs/namespace.c
+              rm namespace_vars.txt
+            fi
           fi
           
           if [ "$FORMATTED_BRANCH" = "android12-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.10" ] || [ "$FORMATTED_BRANCH" = "android13-5.15" ]; then
