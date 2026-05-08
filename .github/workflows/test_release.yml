@@ -68,6 +68,11 @@ on:
         required: true
         type: boolean
         default: false
+      use_nethunter:
+        description: '是否集成 Kali NetHunter 补丁及配置？'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   get_manager:
@@ -89,6 +94,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
 
   build-kernel-a13-5-10:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a13-5.10')
@@ -102,6 +108,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
 
   build-kernel-a13-5-15:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a13-5.15')
@@ -115,6 +122,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
 
   build-kernel-a14-5-15:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a14-5.15')
@@ -128,6 +136,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
 
   build-kernel-a14-6-1:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a14-6.1')
@@ -141,6 +150,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
 
   build-kernel-a15-6-6:
     if: contains(github.event.inputs.kernels_to_build, 'all') || contains(github.event.inputs.kernels_to_build, 'a15-6.6')
@@ -154,6 +164,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
 
   check-build-status:
     runs-on: ubuntu-latest
@@ -264,6 +275,7 @@ jobs:
         -> BBG ${{ inputs.BBG && 'supported' || 'not supported' }}
         ${{ inputs.use_kpm && '-> KPM Support' || '' }}
         -> **LZ4KD&ONEPLUS_LZ4K** ${{ inputs.use_zram && 'supported' || 'not supported' }}
+        -> **Kali NetHunter** ${{ inputs.use_nethunter && 'supported' || 'not supported' }}
         
         <details>
         <summary>Notes:</summary>

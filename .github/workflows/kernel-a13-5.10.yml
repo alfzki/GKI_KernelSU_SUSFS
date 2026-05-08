@@ -37,6 +37,10 @@ on:
         required: true
         type: boolean
         default: false
+      use_nethunter:
+        required: false
+        type: boolean
+        default: false
   
 jobs:
   build-kernel-a13-5-10-kernelsu-susfs:
@@ -79,3 +83,4 @@ jobs:
       use_kpm: ${{ inputs.use_kpm }}
       supp_op: ${{ inputs.supp_op || false }}
       BBG: ${{ inputs.BBG || false }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}

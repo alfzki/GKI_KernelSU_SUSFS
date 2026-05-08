@@ -55,7 +55,7 @@ on:
         description: '是否集成 Kali NetHunter 补丁及配置？'
         required: true
         type: boolean
-        default: false
+        default: true
 jobs:
 
   build-kernel-a14-6-1:

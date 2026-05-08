@@ -40,7 +40,7 @@ on:
       use_nethunter:
         required: false
         type: boolean
-        default: false
+        default: true
 
 jobs:
   build-kernel-a14-6-1-kernelsu-susfs:
