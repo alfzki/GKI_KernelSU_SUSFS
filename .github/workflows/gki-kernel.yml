@@ -53,6 +53,10 @@ on:
         required: true
         type: boolean
         default: false
+      use_nethunter:
+        required: false
+        type: boolean
+        default: false
 jobs:
   build-kernel-kernelsu-susfs:
     runs-on: ubuntu-latest
@@ -161,6 +165,10 @@ jobs:
           # Sukisu的补丁仓库
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
           
+          if [ "${{ inputs.use_nethunter }}" == "true" ]; then
+            git clone https://gitlab.com/kalilinux/nethunter/build-scripts/kali-nethunter-kernel.git
+          fi
+          
       - name: 设置 CONFIG 环境变量
         run: |
           # Set CONFIG dynamically based on inputs values
@@ -202,6 +210,45 @@ jobs:
             curl -LSs https://github.com/zzh20188/GKI_KernelSU_SUSFS/raw/refs/heads/legacy/fix_5.15.legacy -o fix_5.15.legacy.patch
             patch -p1 < fix_5.15.legacy.patch
           fi
+
+      - name: 应用 Kali NetHunter 补丁
+        if: ${{ inputs.use_nethunter }}
+        run: |
+          echo "更改为配置目录: $CONFIG..."
+          cd "$CONFIG/common"
+          for patch in ../../kali-nethunter-kernel/patch.d/*.patch; do
+              echo "Applying: $patch"
+              patch -p1 --forward < "$patch" || echo "FAILED: $patch"
+          done
+
+      - name: 配置 Kali NetHunter
+        if: ${{ inputs.use_nethunter }}
+        run: |
+          echo "更改为配置目录: $CONFIG..."
+          CONFIG_FILE="$CONFIG/common/arch/arm64/configs/gki_defconfig"
+          echo "CONFIG_USB_GADGET=y" >> "$CONFIG_FILE"
+          echo "CONFIG_USB_CONFIGFS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_USB_CONFIGFS_F_HID=y" >> "$CONFIG_FILE"
+          echo "CONFIG_BT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_BT_HCIBTUSB=y" >> "$CONFIG_FILE"
+          echo "CONFIG_BT_RFCOMM=y" >> "$CONFIG_FILE"
+          echo "CONFIG_BT_BNEP=y" >> "$CONFIG_FILE"
+          echo "CONFIG_MAC80211=y" >> "$CONFIG_FILE"
+          echo "CONFIG_MAC80211_MESH=y" >> "$CONFIG_FILE"
+          echo "CONFIG_CFG80211=y" >> "$CONFIG_FILE"
+          echo "CONFIG_RFKILL=y" >> "$CONFIG_FILE"
+          echo "CONFIG_USB_OTG=y" >> "$CONFIG_FILE"
+          echo "CONFIG_USB_OTG_WAKELOCK=y" >> "$CONFIG_FILE"
+          echo "CONFIG_TUN=y" >> "$CONFIG_FILE"
+          echo "CONFIG_PPP=y" >> "$CONFIG_FILE"
+          echo "CONFIG_PPP_DEFLATE=y" >> "$CONFIG_FILE"
+          echo "CONFIG_NAMESPACES=y" >> "$CONFIG_FILE"
+          echo "CONFIG_NET_NS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_PID_NS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_USER_NS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_UTS_NS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_CRYPTO_USER_API_HASH=y" >> "$CONFIG_FILE"
+          echo "CONFIG_CRYPTO_USER_API_SKCIPHER=y" >> "$CONFIG_FILE"
 
       - name: Kernel kABI patching
         run: |

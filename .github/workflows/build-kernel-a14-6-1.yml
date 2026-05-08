@@ -51,6 +51,11 @@ on:
         required: true
         type: boolean
         default: true
+      use_nethunter:
+        description: '是否集成 Kali NetHunter 补丁及配置？'
+        required: true
+        type: boolean
+        default: false
 jobs:
 
   build-kernel-a14-6-1:
@@ -64,6 +69,7 @@ jobs:
       use_zram: ${{ inputs.use_zram }}
       use_kpm: ${{ inputs.use_kpm }}
       BBG: ${{ inputs.BBG || false }}
+      use_nethunter: ${{ inputs.use_nethunter || false }}
   get-ksu-manager:
     if: ${{ inputs.get_manager }}
     uses: ./.github/workflows/get-manager.yml
