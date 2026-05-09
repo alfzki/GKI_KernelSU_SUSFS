@@ -237,18 +237,9 @@ jobs:
           echo "CONFIG_MAC80211_MESH=y" >> "$CONFIG_FILE"
           echo "CONFIG_CFG80211=m" >> "$CONFIG_FILE"
           echo "CONFIG_RFKILL=m" >> "$CONFIG_FILE"
-          echo "CONFIG_USB_OTG=y" >> "$CONFIG_FILE"
-          echo "CONFIG_USB_OTG_WAKELOCK=y" >> "$CONFIG_FILE"
           echo "CONFIG_TUN=y" >> "$CONFIG_FILE"
           echo "CONFIG_PPP=m" >> "$CONFIG_FILE"
           echo "CONFIG_PPP_DEFLATE=m" >> "$CONFIG_FILE"
-          echo "CONFIG_NAMESPACES=y" >> "$CONFIG_FILE"
-          echo "CONFIG_NET_NS=y" >> "$CONFIG_FILE"
-          echo "CONFIG_PID_NS=y" >> "$CONFIG_FILE"
-          echo "CONFIG_USER_NS=y" >> "$CONFIG_FILE"
-          echo "CONFIG_UTS_NS=y" >> "$CONFIG_FILE"
-          echo "CONFIG_CRYPTO_USER_API_HASH=y" >> "$CONFIG_FILE"
-          echo "CONFIG_CRYPTO_USER_API_SKCIPHER=y" >> "$CONFIG_FILE"
 
       - name: Kernel kABI patching
         run: |
