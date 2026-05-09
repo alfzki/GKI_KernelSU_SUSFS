@@ -90,8 +90,11 @@ jobs:
           echo "CONFIG set to: $CONFIG"
 
       # Install ccache
-      - name: 安装 ccache
-        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ccache python3 git curl
+      - name: 安装 ccache及构建工具
+        run: |
+          sudo apt update && sudo apt upgrade -y && sudo apt install -y ccache python3 git curl
+          sudo curl -L https://github.com/bazelbuild/buildtools/releases/download/v7.1.2/buildozer-linux-amd64 -o /usr/local/bin/buildozer
+          sudo chmod +x /usr/local/bin/buildozer
 
       - name: 配置 ccache
         run: |
@@ -720,6 +723,18 @@ jobs:
             if [ ! -z ${{ inputs.version }} ]; then
               sed -i '/^CONFIG_LOCALVERSION=/ s/="\([^"]*\)"/="${{ inputs.version }}"/' ./common/arch/arm64/configs/gki_defconfig
             fi
+          fi
+
+      - name: 修复 NetHunter Bazel 模块输出
+        if: ${{ inputs.use_nethunter && (inputs.android_version == 'android14' || inputs.android_version == 'android15') }}
+        run: |
+          echo "更改为配置目录: $CONFIG..."
+          cd "$CONFIG/common"
+          if [ -f "BUILD.bazel" ]; then
+            echo "正在使用 buildozer 添加 NetHunter 模块到 module_outs..."
+            buildozer 'add module_outs net/wireless/cfg80211.ko drivers/bluetooth/btintel.ko drivers/bluetooth/btrtl.ko drivers/bluetooth/btusb.ko net/bluetooth/bnep/bnep.ko net/mac80211/mac80211.ko' //common:kernel_aarch64
+          else
+            echo "未找到 BUILD.bazel，跳过 buildozer 修复"
           fi
 
       - name: Build with retry
