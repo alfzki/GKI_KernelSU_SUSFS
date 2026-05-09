@@ -229,19 +229,19 @@ jobs:
           echo "CONFIG_USB_GADGET=y" >> "$CONFIG_FILE"
           echo "CONFIG_USB_CONFIGFS=y" >> "$CONFIG_FILE"
           echo "CONFIG_USB_CONFIGFS_F_HID=y" >> "$CONFIG_FILE"
-          echo "CONFIG_BT=y" >> "$CONFIG_FILE"
-          echo "CONFIG_BT_HCIBTUSB=y" >> "$CONFIG_FILE"
-          echo "CONFIG_BT_RFCOMM=y" >> "$CONFIG_FILE"
-          echo "CONFIG_BT_BNEP=y" >> "$CONFIG_FILE"
-          echo "CONFIG_MAC80211=y" >> "$CONFIG_FILE"
+          echo "CONFIG_BT=m" >> "$CONFIG_FILE"
+          echo "CONFIG_BT_HCIBTUSB=m" >> "$CONFIG_FILE"
+          echo "CONFIG_BT_RFCOMM=m" >> "$CONFIG_FILE"
+          echo "CONFIG_BT_BNEP=m" >> "$CONFIG_FILE"
+          echo "CONFIG_MAC80211=m" >> "$CONFIG_FILE"
           echo "CONFIG_MAC80211_MESH=y" >> "$CONFIG_FILE"
-          echo "CONFIG_CFG80211=y" >> "$CONFIG_FILE"
-          echo "CONFIG_RFKILL=y" >> "$CONFIG_FILE"
+          echo "CONFIG_CFG80211=m" >> "$CONFIG_FILE"
+          echo "CONFIG_RFKILL=m" >> "$CONFIG_FILE"
           echo "CONFIG_USB_OTG=y" >> "$CONFIG_FILE"
           echo "CONFIG_USB_OTG_WAKELOCK=y" >> "$CONFIG_FILE"
           echo "CONFIG_TUN=y" >> "$CONFIG_FILE"
-          echo "CONFIG_PPP=y" >> "$CONFIG_FILE"
-          echo "CONFIG_PPP_DEFLATE=y" >> "$CONFIG_FILE"
+          echo "CONFIG_PPP=m" >> "$CONFIG_FILE"
+          echo "CONFIG_PPP_DEFLATE=m" >> "$CONFIG_FILE"
           echo "CONFIG_NAMESPACES=y" >> "$CONFIG_FILE"
           echo "CONFIG_NET_NS=y" >> "$CONFIG_FILE"
           echo "CONFIG_PID_NS=y" >> "$CONFIG_FILE"
@@ -574,20 +574,6 @@ jobs:
             sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "$CONFIG/common/modules.bzl"
             echo "CONFIG_MODULE_SIG_FORCE=n" >> "$CONFIG_FILE"
             echo 'Android14_Bazel:已修复zram&zsmalloc'
-          fi
-
-          if [ "${{ inputs.use_nethunter }}" == "true" ]; then
-            if [ -f "$CONFIG/common/modules.bzl" ]; then
-                sed -i '/"drivers\/bluetooth\/btbcm\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"drivers\/net\/ppp\/ppp_deflate\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"drivers\/net\/ppp\/ppp_generic\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"drivers\/net\/slip\/slhc\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"lib\/crypto\/libarc4\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"net\/bluetooth\/bluetooth\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"net\/bluetooth\/rfcomm\/rfcomm\.ko",/d' "$CONFIG/common/modules.bzl"
-                sed -i '/"net\/rfkill\/rfkill\.ko",/d' "$CONFIG/common/modules.bzl"
-                echo "Android 14+ Bazel: Removed built-in NetHunter modules from modules.bzl"
-            fi
           fi
 
           if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
