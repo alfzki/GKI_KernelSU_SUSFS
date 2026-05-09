@@ -90,11 +90,8 @@ jobs:
           echo "CONFIG set to: $CONFIG"
 
       # Install ccache
-      - name: 安装 ccache及构建工具
-        run: |
-          sudo apt update && sudo apt upgrade -y && sudo apt install -y ccache python3 git curl
-          sudo curl -L https://github.com/bazelbuild/buildtools/releases/download/v7.1.2/buildozer-linux-amd64 -o /usr/local/bin/buildozer
-          sudo chmod +x /usr/local/bin/buildozer
+      - name: 安装 ccache
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y ccache python3 git curl
 
       - name: 配置 ccache
         run: |
@@ -730,11 +727,11 @@ jobs:
         run: |
           echo "更改为配置目录: $CONFIG..."
           cd "$CONFIG/common"
-          if [ -f "BUILD.bazel" ]; then
-            echo "正在使用 buildozer 添加 NetHunter 模块到 module_outs..."
-            buildozer 'add module_outs net/wireless/cfg80211.ko drivers/bluetooth/btintel.ko drivers/bluetooth/btrtl.ko drivers/bluetooth/btusb.ko net/bluetooth/bnep/bnep.ko net/mac80211/mac80211.ko' //common:kernel_aarch64
+          if [ -f "modules.bzl" ]; then
+            echo "正在将 NetHunter 模块添加到 modules.bzl..."
+            sed -i 's/"drivers\/bluetooth\/btbcm\.ko",/"drivers\/bluetooth\/btbcm.ko",\n    "net\/wireless\/cfg80211.ko",\n    "drivers\/bluetooth\/btintel.ko",\n    "drivers\/bluetooth\/btrtl.ko",\n    "drivers\/bluetooth\/btusb.ko",\n    "net\/bluetooth\/bnep\/bnep.ko",\n    "net\/mac80211\/mac80211.ko",/g' modules.bzl
           else
-            echo "未找到 BUILD.bazel，跳过 buildozer 修复"
+            echo "未找到 modules.bzl，跳过模块输出修复"
           fi
 
       - name: Build with retry
