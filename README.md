@@ -66,10 +66,10 @@ python build.py --list-matrix
 |---------|--------|------------|----------|
 | 12 | 5.10 | 136, 198, 209, 236, X (LTS) | 2022-11 ~ 2025-05 |
 | 13 | 5.15 | 74, 123, 148, 170, 178, 180 | 2023-01 ~ 2025-05 |
-| 14 | 6.1 | 78, 90, 99, 124, 145 | 2024-06 ~ 2025-09 |
+| 14 | 6.1 | 78, 90, 99, 124, 145, 157, 162, 172, 176 | 2024-06 ~ 2026-09 |
 | 15 | 6.6 | 50, 66, 102 | 2024-10 ~ 2025-10 |
 
-总计 **19 个版本组合**
+总计 **23 个版本组合**
 
 ---
 
@@ -79,8 +79,8 @@ python build.py --list-matrix
 |------|------|--------|
 | `--android`, `-a` | Android 版本 (android12/13/14/15) | android14 |
 | `--kernel`, `-k` | Kernel 版本 (5.10/5.15/6.1/6.6) | 6.1 |
-| `--sub-level`, `-s` | Sub level 版本或 X (LTS) | 124 |
-| `--os-patch` | OS Patch Level | 2025-02 |
+| `--sub-level`, `-s` | Sub level 版本或 X (LTS) | 176 |
+| `--os-patch` | OS Patch Level | 2026-09 |
 | `--revision` | Android 12 Revision | - |
 | `--ksu-version` | SukiSU-Ultra 版本 (Stable/Dev) | Stable(标准) |
 | `--ksu-commit` | 指定 SukiSU-Ultra commit hash | latest |
@@ -88,6 +88,7 @@ python build.py --list-matrix
 | `--zram` | 启用 ZRAM (LZ4KD) | False |
 | `--no-kpm` | 禁用 KPM | False |
 | `--bbg` | 启用 Baseband-guard | False |
+| `--nethunter` | 启用 Kali NetHunter (实验性/已知可能损坏) | False |
 | `--op8e` | 启用 OnePlus 8E 支持 | False |
 | `--bbr` | 设置 BBR 为默认拥塞算法 | False |
 | `--no-release` | 不创建 GitHub Release | False |

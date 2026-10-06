@@ -84,6 +84,9 @@ KERNEL_PATCHES_CONFIG = {"repo_url": "https://github.com/Tools-cx-app/kernel_pat
 BBG_CONFIG = {"repo_url": "https://github.com/vc-teahouse/Baseband-guard.git",
               "setup_script": "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh"}
 
+# Kali NetHunter 仓库配置
+NETHUNTER_REPO_CONFIG = {"repo_url": "https://gitlab.com/kalilinux/nethunter/build-scripts/kali-nethunter-kernel.git"}
+
 # 工具链配置
 TOOLCHAIN_CONFIG = {"aosp_mirror": "https://android.googlesource.com",
                     "build_tools_branch": "main-kernel-build-2024",
@@ -108,6 +111,7 @@ class BuildConfig:
     use_zram: bool = False
     use_kpm: bool = True
     use_bbg: bool = False
+    use_nethunter: bool = False
     support_op8e: bool = False
     set_default_bbr: bool = False
     make_release: bool = True
@@ -178,6 +182,7 @@ class BuildConfig:
             "use_zram": self.use_zram,
             "use_kpm": self.use_kpm,
             "use_bbg": self.use_bbg,
+            "use_nethunter": self.use_nethunter,
             "support_op8e": self.support_op8e,
             "set_default_bbr": self.set_default_bbr,
             "make_release": self.make_release,

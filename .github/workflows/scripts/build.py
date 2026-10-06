@@ -42,6 +42,10 @@ DEFAULT_BUILD_MATRIX = {
         {"sub_level": "99", "os_patch_level": "2024-10"},
         {"sub_level": "124", "os_patch_level": "2025-02"},
         {"sub_level": "145", "os_patch_level": "2025-09"},
+        {"sub_level": "157", "os_patch_level": "2025-12"},
+        {"sub_level": "162", "os_patch_level": "2026-03"},
+        {"sub_level": "172", "os_patch_level": "2026-06"},
+        {"sub_level": "176", "os_patch_level": "2026-09"},
     ],
     "android15-6.6": [
         {"sub_level": "50", "os_patch_level": "2024-10"},
@@ -64,6 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--zram", action="store_true")
     parser.add_argument("--no-kpm", action="store_true")
     parser.add_argument("--bbg", action="store_true")
+    parser.add_argument("--nethunter", action="store_true", default=False, help="启用 Kali NetHunter (实验性/已知可能损坏)")
     parser.add_argument("--op8e", action="store_true")
     parser.add_argument("--bbr", action="store_true")
     parser.add_argument("--no-release", action="store_true")
@@ -85,14 +90,15 @@ def create_build_config(args: argparse.Namespace) -> BuildConfig:
     return BuildConfig(
         android_version=args.android or "android14",
         kernel_version=args.kernel or "6.1",
-        sub_level=args.sub_level or "124",
-        os_patch_level=args.os_patch or "2025-02",
+        sub_level=args.sub_level or "176",
+        os_patch_level=args.os_patch or "2026-09",
         kernelsu_version=args.ksu_version,
         kernelsu_commit=args.ksu_commit,
         susfs_commit=args.susfs_commit,
         use_zram=args.zram,
         use_kpm=not args.no_kpm,
         use_bbg=args.bbg,
+        use_nethunter=getattr(args, 'nethunter', False),
         support_op8e=args.op8e,
         set_default_bbr=args.bbr,
         make_release=not args.no_release,
@@ -158,6 +164,7 @@ def build_matrix(matrix_key: str, args: argparse.Namespace, workspace: str) -> l
                 use_zram=args.zram,
                 use_kpm=not args.no_kpm,
                 use_bbg=args.bbg,
+                use_nethunter=getattr(args, 'nethunter', False),
                 support_op8e=args.op8e,
                 set_default_bbr=args.bbr,
                 make_release=not args.no_release,

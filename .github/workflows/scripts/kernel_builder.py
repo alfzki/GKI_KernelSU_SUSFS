@@ -7,8 +7,8 @@ from typing import Optional, Callable
 from dataclasses import dataclass, field
 
 from config import (BuildConfig, KSU_REPO_CONFIG, SUSFS_REPO_CONFIG, SUKISU_PATCH_REPO_CONFIG,
-                   ANYKERNEL_CONFIG, KERNEL_PATCHES_CONFIG, BBG_CONFIG, TOOLCHAIN_CONFIG,
-                   LEGACY_FIXES, OP8E_PATCH_URL, KPM_PATCH_URL)
+                   ANYKERNEL_CONFIG, KERNEL_PATCHES_CONFIG, BBG_CONFIG, NETHUNTER_REPO_CONFIG,
+                   TOOLCHAIN_CONFIG, LEGACY_FIXES, OP8E_PATCH_URL, KPM_PATCH_URL)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -113,6 +113,7 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         self.kernel_patches_dir = self.workspace / "kernel_patches"
         self.toolchain_dir = self.workspace / "toolchain"
         self.mkbootimg_dir = self.workspace / "mkbootimg"
+        self.nethunter_dir = self.workspace / "kali-nethunter-kernel"
         self._setup_env()
 
     def _setup_env(self):
@@ -157,6 +158,12 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                 self._run_cmd(cmd, check=False)
             else:
                 logger.info(f"{name} 已存在，跳过")
+        if self.config.use_nethunter:
+            if not self.nethunter_dir.exists():
+                logger.info("克隆 Kali NetHunter...")
+                self._run_cmd(f"git clone {NETHUNTER_REPO_CONFIG['repo_url']} {self.nethunter_dir}", check=False)
+            else:
+                logger.info("Kali NetHunter 已存在，跳过")
         self._apply_susfs_commit()
         logger.info("=== 仓库克隆完成 ===")
 
@@ -308,6 +315,21 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         if hooks_patch.exists():
             self._run_cmd(f"cp {hooks_patch} . && patch -p1 -F 3 < 69_hide_stuff.patch", check=False)
 
+    def apply_nethunter_patches(self):
+        if not self.config.use_nethunter:
+            return
+        logger.info("=== 应用 Kali NetHunter 补丁 ===")
+        common_dir = self.work_dir / "common"
+        if not common_dir.exists() or not self.nethunter_dir.exists():
+            return
+        self._chdir(common_dir)
+        patch_dir = self.nethunter_dir / "patch.d"
+        if patch_dir.exists():
+            for p in sorted(patch_dir.glob("*.patch")):
+                logger.info(f"应用 NetHunter 补丁: {p.name}")
+                self._run_cmd(f"patch -p1 --forward < {p}", check=False)
+        self._chdir(self.work_dir)
+
     def apply_zram_patches(self):
         if not self.config.use_zram:
             return
@@ -420,6 +442,9 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
             self._configure_zram()
             self._configure_bazel()
 
+        if self.config.use_nethunter:
+            self._configure_nethunter()
+
         if self.config.set_default_bbr:
             with open(config_file, "a") as f:
                 f.write("CONFIG_DEFAULT_BBR=y\n")
@@ -431,6 +456,51 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
             content = content.replace("check_defconfig", "")
             with open(build_config, "w") as f:
                 f.write(content)
+
+    def _configure_nethunter(self):
+        logger.info("=== 配置 Kali NetHunter ===")
+        config_file = self.work_dir / "common/arch/arm64/configs/gki_defconfig"
+        if not config_file.exists():
+            return
+        nethunter_configs = """
+# === Kali NetHunter Config ===
+CONFIG_USB_GADGET=y
+CONFIG_USB_CONFIGFS=y
+CONFIG_USB_CONFIGFS_F_HID=y
+CONFIG_BT=y
+CONFIG_BT_HCIBTUSB=y
+CONFIG_BT_RFCOMM=y
+CONFIG_BT_BNEP=y
+CONFIG_MAC80211=y
+CONFIG_MAC80211_MESH=y
+CONFIG_CFG80211=m
+CONFIG_RFKILL=m
+CONFIG_TUN=y
+CONFIG_PPP=m
+CONFIG_PPP_DEFLATE=m
+"""
+        with open(config_file, "a") as f:
+            f.write(nethunter_configs)
+
+        # 修复 NetHunter Bazel 模块输出 (Android 14 和 15)
+        if self.config.android_version in ["android14", "android15"]:
+            modules_bzl = self.work_dir / "common/modules.bzl"
+            if modules_bzl.exists():
+                logger.info("正在将 NetHunter 模块添加到 modules.bzl...")
+                with open(modules_bzl, "r") as f:
+                    content = f.read()
+                target_str = '"drivers/bluetooth/btbcm.ko",'
+                if target_str in content:
+                    replacement = ('"drivers/bluetooth/btbcm.ko",\n'
+                                   '    "net/wireless/cfg80211.ko",\n'
+                                   '    "drivers/bluetooth/btintel.ko",\n'
+                                   '    "drivers/bluetooth/btrtl.ko",\n'
+                                   '    "drivers/bluetooth/btusb.ko",\n'
+                                   '    "net/bluetooth/bnep/bnep.ko",\n'
+                                   '    "net/mac80211/mac80211.ko",')
+                    content = content.replace(target_str, replacement)
+                    with open(modules_bzl, "w") as f:
+                        f.write(content)
 
     def _configure_zram(self):
         config_file = self.work_dir / "common/arch/arm64/configs/gki_defconfig"
@@ -573,6 +643,12 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
             "CONFIG_BBR": "BBR",
             "CONFIG_ZRAM": "ZRAM",
         }
+
+        if self.config.use_nethunter:
+            key_configs["CONFIG_MAC80211"] = "NetHunter WiFi"
+            key_configs["CONFIG_BT"] = "NetHunter BT"
+            key_configs["CONFIG_TUN"] = "NetHunter TUN"
+            key_configs["CONFIG_PPP"] = "NetHunter PPP"
         
         logger.info("关键配置状态:")
         for prefix, name in key_configs.items():
@@ -741,6 +817,7 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
             self.add_bbg()
             self.apply_susfs_patches()
             self.apply_sukisu_patches()
+            self.apply_nethunter_patches()
             self.apply_zram_patches()
             self.apply_task_mmu_fixes()
             self.configure_kernel()
