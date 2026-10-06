@@ -25,8 +25,8 @@ class TelegramNotifier:
     def send_message(self, message: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True) -> bool:
         """发送消息到 Telegram"""
         if not self.bot_token or not self.chat_id:
-            print("错误: 缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID")
-            return False
+            print("提示: 缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID，跳过 Telegram 发送")
+            return True
 
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
@@ -61,8 +61,8 @@ class TelegramNotifier:
     def send_document(self, file_path: str, caption: str = None) -> bool:
         """发送文件到 Telegram"""
         if not self.bot_token or not self.chat_id:
-            print("错误: 缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID")
-            return False
+            print("提示: 缺少 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID，跳过 Telegram 文件发送")
+            return True
 
         if not os.path.exists(file_path):
             print(f"文件不存在: {file_path}")
