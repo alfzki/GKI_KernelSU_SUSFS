@@ -267,10 +267,10 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         elif self.config.kernelsu_version == KSUVersion.DEV.value:
             ksu_target = KSU_REPO_CONFIG.get("branch", "main")
         else:
-            ksu_target = KSU_REPO_CONFIG.get("tag", "v4.2.0")
+            ksu_target = KSU_REPO_CONFIG.get("tag", "v4.2.0-rc3")
 
-        logger.info(f"使用 SukiSU-Ultra 目标: {ksu_target}")
-        setup_url = (f"https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/{ksu_target}/kernel/setup.sh"
+        logger.info(f"使用 ReSukiSU 目标: {ksu_target}")
+        setup_url = (f"https://raw.githubusercontent.com/Baka-SU/BakaSU/{ksu_target}/kernel/setup.sh"
                     if self.config.kernelsu_commit else KSU_REPO_CONFIG["setup_script"])
         self._run_cmd(f"curl -LSs {setup_url} | bash -s {ksu_target}", check=False)
 
@@ -282,11 +282,15 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
             if kbuild_path.exists():
                 with open(kbuild_path, "r") as f:
                     content = f.read()
-                if ksu_target in ["v4.2.0", "40900"] or self.config.kernelsu_version == KSUVersion.STABLE.value:
-                    content = re.sub(r'KSU_VERSION\s*:=.*', 'KSU_VERSION := 40900', content)
-                    content = content.replace("REPO_BRANCH := main", "REPO_BRANCH := v4.2.0")
-                elif ksu_target:
-                    content = content.replace("REPO_BRANCH := main", f"REPO_BRANCH := {ksu_target}")
+                # 绕过 Bazel 沙盒中的子模块检查错误
+                content = re.sub(
+                    r'ifeq \(\$\(LOCAL_GIT_EXISTS\),0\).*?\$\(error.*?\)\nendif',
+                    '# Bazel sandbox git check bypass',
+                    content,
+                    flags=re.DOTALL
+                )
+                if ksu_target in ["v4.2.0-rc3", "35171"] or self.config.kernelsu_version == KSUVersion.STABLE.value:
+                    content = re.sub(r'KSU_VERSION\s*:=.*', 'KSU_VERSION := 35171', content)
                 with open(kbuild_path, "w") as f:
                     f.write(content)
             self._chdir(self.work_dir)
@@ -485,6 +489,7 @@ endmenu
         if hide_c.exists():
             with open(hide_c, "r") as f:
                 content = f.read()
+            content = content.replace("#define __maybe_static static", "#define __maybe_static")
             content = content.replace("static bool ksu_selinux_hide_enabled", "bool ksu_selinux_hide_enabled")
             content = content.replace("static bool ksu_selinux_hide_running", "bool ksu_selinux_hide_running")
             content = content.replace("static struct selinux_state fake_state;", "struct selinux_state fake_state;")

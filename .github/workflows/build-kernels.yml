@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       kernelsu_version:
-        description: 'SukiSU 版本 (Stable 默认 v4.2.0 / 40900)'
+        description: 'ReSukiSU 版本 (Stable 默认 v4.2.0-rc3 / 35171)'
         required: true
         type: choice
         options:
@@ -16,7 +16,7 @@ on:
           - Dev(开发)
         default: Stable(标准)
       kernelsu_commit:
-        description: '指定 SukiSU commit hash (可选，留空使用最新)'
+        description: '指定 ReSukiSU commit hash (可选，留空使用最新)'
         required: false
         type: string
         default: ''

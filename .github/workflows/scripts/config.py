@@ -63,12 +63,12 @@ ANDROID_KERNEL_MAP = {
     AndroidVersion.ANDROID15: [KernelVersion.KERNEL_6_6],
 }
 
-# 仓库配置
-KSU_REPO_CONFIG = {"repo_url": "https://github.com/SukiSU-Ultra/SukiSU-Ultra.git",
+# 仓库配置 (ReSukiSU / BakaSU)
+KSU_REPO_CONFIG = {"repo_url": "https://github.com/Baka-SU/BakaSU.git",
                     "branch": "main",
-                    "tag": "v4.2.0",
-                    "version": "40900",
-                    "setup_script": "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh"}
+                    "tag": "v4.2.0-rc3",
+                    "version": "35171",
+                    "setup_script": "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh"}
 
 # SUSFS 仓库配置
 SUSFS_REPO_CONFIG = {"repo_url": "https://github.com/ShirkNeko/susfs4ksu.git"}

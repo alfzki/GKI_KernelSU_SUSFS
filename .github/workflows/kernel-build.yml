@@ -43,7 +43,7 @@ on:
         type: string
         default: ''
       kernelsu_version:
-        description: 'SukiSU 版本 (Stable 默认 v4.2.0 / 40900)'
+        description: 'ReSukiSU 版本 (Stable 默认 v4.2.0-rc3 / 35171)'
         required: true
         type: choice
         options:
@@ -217,7 +217,7 @@ jobs:
           TITLE="Kernel ${{ github.event.inputs.kernel_version }}.${{ github.event.inputs.sub_level }} (${{ github.event.inputs.android_version }})"
           gh release create "$TAG_NAME" artifacts/* SHA256SUMS.txt \
             --title "$TITLE" \
-            --notes "Automated GKI Kernel build for ${{ github.event.inputs.android_version }} (Kernel ${{ github.event.inputs.kernel_version }}.${{ github.event.inputs.sub_level }}) with SukiSU-Ultra & SUSFS" \
+            --notes "Automated GKI Kernel build for ${{ github.event.inputs.android_version }} (Kernel ${{ github.event.inputs.kernel_version }}.${{ github.event.inputs.sub_level }}) with ReSukiSU & SUSFS" \
             || gh release upload "$TAG_NAME" artifacts/* SHA256SUMS.txt --clobber
 
       - name: Send Telegram Notification

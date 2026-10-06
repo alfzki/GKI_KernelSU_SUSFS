@@ -82,8 +82,8 @@ python build.py --list-matrix
 | `--sub-level`, `-s` | Sub level 版本或 X (LTS) | 176 |
 | `--os-patch` | OS Patch Level | 2026-09 |
 | `--revision` | Android 12 Revision | - |
-| `--ksu-version` | SukiSU-Ultra 版本 (Stable: v4.2.0 / 40900, Dev) | Stable(标准) |
-| `--ksu-commit` | 指定 SukiSU-Ultra commit hash | latest |
+| `--ksu-version` | ReSukiSU 版本 (Stable: v4.2.0-rc3 / 35171, Dev) | Stable(标准) |
+| `--ksu-commit` | 指定 ReSukiSU commit hash | latest |
 | `--susfs-commit` | 指定 SUSFS commit (hash 或 HEAD~N) | latest |
 | `--zram` | 启用 ZRAM (LZ4KD) | False |
 | `--no-kpm` | 禁用 KPM | False |
