@@ -226,7 +226,12 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         if not common_dir.exists():
             raise RuntimeError("repo sync 失败，common 目录不存在")
 
-        if self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "138":
+        if self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "162":
+            logger.info("检出指定 tag android14-6.1-2026-03_r24 (6.1.162)...")
+            self._chdir(common_dir)
+            self._run_cmd("git fetch --depth=1 https://android.googlesource.com/kernel/common refs/tags/android14-6.1-2026-03_r24 && git checkout -f FETCH_HEAD", check=False)
+            self._chdir(self.work_dir)
+        elif self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "138":
             logger.info("检出指定 commit/tag 0c3d559bcd85 (android14-6.1-2025-06_r15)...")
             self._chdir(common_dir)
             self._run_cmd("git fetch --depth=1 https://android.googlesource.com/kernel/common refs/tags/android14-6.1-2025-06_r15 && git checkout -f FETCH_HEAD", check=False)
@@ -907,6 +912,8 @@ CONFIG_PPP_DEFLATE=m
             if not cv.startswith("-"):
                 cv = "-" + cv
             target_localversion = cv[:MAX_CUSTOM_LEN]
+        elif self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "162":
+            target_localversion = "-android14-11"
         elif self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "138":
             target_localversion = "-android14-11-g0c3d559bcd85-ab14529422"
 

@@ -37,7 +37,7 @@ DEFAULT_BUILD_MATRIX = {
         {"sub_level": "189", "os_patch_level": "2025-09"},
     ],
     "android14-6.1": [
-        {"sub_level": "138", "os_patch_level": "2025-06"},
+        {"sub_level": "162", "os_patch_level": "2026-03"},
     ],
     "android15-6.6": [
         {"sub_level": "50", "os_patch_level": "2024-10"},
@@ -82,8 +82,8 @@ def create_build_config(args: argparse.Namespace) -> BuildConfig:
     return BuildConfig(
         android_version=args.android or "android14",
         kernel_version=args.kernel or "6.1",
-        sub_level=args.sub_level or "138",
-        os_patch_level=args.os_patch or "2025-06",
+        sub_level=args.sub_level or "162",
+        os_patch_level=args.os_patch or "2026-03",
         kernelsu_version=args.ksu_version,
         kernelsu_commit=args.ksu_commit,
         susfs_commit=args.susfs_commit,

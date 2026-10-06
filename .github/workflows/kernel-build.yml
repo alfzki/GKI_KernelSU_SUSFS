@@ -31,12 +31,12 @@ on:
         description: 'Sub Level 版本'
         required: true
         type: string
-        default: '138'
+        default: '162'
       os_patch_level:
         description: 'OS Patch Level'
         required: true
         type: string
-        default: '2025-06'
+        default: '2026-03'
       revision:
         description: 'Android 12 Revision (可选)'
         required: false
