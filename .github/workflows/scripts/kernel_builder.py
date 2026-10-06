@@ -472,6 +472,156 @@ endmenu
                 with open(ksu_kconfig, "a") as f:
                     f.write(susfs_kconfig_block)
 
+        self.patch_kernelsu_for_susfs()
+
+    def patch_kernelsu_for_susfs(self):
+        logger.info("=== 修补 KernelSU 以支持 SUSFS ===")
+        ksu_dir = self.work_dir / "KernelSU"
+        if not ksu_dir.exists():
+            return
+
+        # 1. 修补 selinux_hide.c (导出 SUSFS 所需的符号)
+        hide_c = ksu_dir / "kernel/feature/selinux_hide.c"
+        if hide_c.exists():
+            with open(hide_c, "r") as f:
+                content = f.read()
+            content = content.replace("static bool ksu_selinux_hide_enabled", "bool ksu_selinux_hide_enabled")
+            content = content.replace("static bool ksu_selinux_hide_running", "bool ksu_selinux_hide_running")
+            content = content.replace("static struct selinux_state fake_state;", "struct selinux_state fake_state;")
+            content = content.replace("static DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);", "DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);")
+            content = content.replace("static struct page *fake_status = NULL;", "struct page *fake_status = NULL;")
+            content = content.replace("static void initialize_fake_status()", "void initialize_fake_status()")
+            with open(hide_c, "w") as f:
+                f.write(content)
+            logger.info("已修补 KernelSU selinux_hide.c 符号可见性")
+
+        # 2. 修补 selinux.h (添加 SUSFS 函数声明)
+        sel_h = ksu_dir / "kernel/selinux/selinux.h"
+        if sel_h.exists():
+            with open(sel_h, "r") as f:
+                content = f.read()
+            if "susfs_is_current_ksu_domain" not in content:
+                decls = """
+bool susfs_is_sid_equal(const struct cred *cred, u32 sid2);
+u32 susfs_get_sid_from_name(const char *secctx_name);
+u32 susfs_get_current_sid(void);
+void susfs_set_batch_sid(void);
+bool susfs_is_current_zygote_domain(void);
+bool susfs_is_current_zygote_next_domain(void);
+bool susfs_is_current_ksu_domain(void);
+bool susfs_is_current_init_domain(void);
+"""
+                content = content.replace("#endif", decls + "\n#endif")
+                with open(sel_h, "w") as f:
+                    f.write(content)
+                logger.info("已向 KernelSU selinux.h 添加 SUSFS 声明")
+
+        # 3. 修补 selinux.c (实现 SUSFS SID 与 domain 检查函数)
+        sel_c = ksu_dir / "kernel/selinux/selinux.c"
+        if sel_c.exists():
+            with open(sel_c, "r") as f:
+                content = f.read()
+            if "susfs_priv_app_sid" not in content:
+                body = """
+#define KERNEL_INIT_DOMAIN "u:r:init:s0"
+#define KERNEL_ZYGOTE_DOMAIN "u:r:zygote:s0"
+#define KERNEL_ZYGOTE_NEXT_DOMAIN "u:r:zygote_next:s0"
+#define KERNEL_PRIV_APP_DOMAIN "u:r:priv_app:s0:c512,c768"
+
+u32 susfs_ksu_sid __read_mostly = 0;
+u32 susfs_init_sid __read_mostly = 0;
+u32 susfs_zygote_sid __read_mostly = 0;
+u32 susfs_zygote_next_sid __read_mostly = 0;
+u32 susfs_priv_app_sid __read_mostly = 0;
+
+static inline void susfs_set_sid(const char *secctx_name, u32 *out_sid)
+{
+    int err;
+    if (!secctx_name || !out_sid) {
+        pr_err("secctx_name || out_sid is NULL\\n");
+        return;
+    }
+    err = security_secctx_to_secid(secctx_name, strlen(secctx_name), out_sid);
+    if (err) {
+        pr_err("failed setting sid for '%s', err: %d\\n", secctx_name, err);
+        return;
+    }
+    pr_info("sid '%u' is set for secctx_name '%s'\\n", *out_sid, secctx_name);
+}
+
+bool susfs_is_sid_equal(const struct cred *cred, u32 sid2) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
+    const struct task_security_struct *tsec = selinux_cred(cred);
+#else
+    const struct cred_security_struct *tsec = selinux_cred(cred);
+#endif
+    if (!tsec) {
+        return false;
+    }
+    return tsec->sid == sid2;
+}
+
+u32 susfs_get_sid_from_name(const char *secctx_name)
+{
+    u32 out_sid = 0;
+    int err;
+    if (!secctx_name) {
+        pr_err("secctx_name is NULL\\n");
+        return 0;
+    }
+    err = security_secctx_to_secid(secctx_name, strlen(secctx_name), &out_sid);
+    if (err) {
+        pr_err("failed getting sid from secctx_name: %s, err: %d\\n", secctx_name, err);
+        return 0;
+    }
+    return out_sid;
+}
+
+u32 susfs_get_current_sid(void) {
+    return current_sid();
+}
+
+bool susfs_is_current_zygote_domain(void) {
+    return unlikely(current_sid() == susfs_zygote_sid);
+}
+
+bool susfs_is_current_zygote_next_domain(void) {
+    return unlikely(current_sid() == susfs_zygote_next_sid);
+}
+
+bool susfs_is_current_ksu_domain(void) {
+    return unlikely(current_sid() == susfs_ksu_sid);
+}
+
+bool susfs_is_current_init_domain(void) {
+    return unlikely(current_sid() == susfs_init_sid);
+}
+
+void susfs_set_batch_sid(void)
+{
+    susfs_set_sid(KERNEL_ZYGOTE_DOMAIN, &susfs_zygote_sid);
+    susfs_set_sid(KERNEL_ZYGOTE_NEXT_DOMAIN, &susfs_zygote_next_sid);
+    susfs_set_sid(KERNEL_SU_CONTEXT, &susfs_ksu_sid);
+    susfs_set_sid(KERNEL_INIT_DOMAIN, &susfs_init_sid);
+    susfs_set_sid(KERNEL_PRIV_APP_DOMAIN, &susfs_priv_app_sid);
+}
+"""
+                content += "\n" + body
+                with open(sel_c, "w") as f:
+                    f.write(content)
+                logger.info("已向 KernelSU selinux.c 添加 SUSFS SID 支持")
+
+        # 4. 修补 rules.c (在重置 AVC 缓存后调用 susfs_set_batch_sid)
+        rules_c = ksu_dir / "kernel/selinux/rules.c"
+        if rules_c.exists():
+            with open(rules_c, "r") as f:
+                content = f.read()
+            if "susfs_set_batch_sid();" not in content:
+                content = content.replace("reset_avc_cache();", "reset_avc_cache();\n    susfs_set_batch_sid();")
+                with open(rules_c, "w") as f:
+                    f.write(content)
+                logger.info("已向 KernelSU rules.c 添加 susfs_set_batch_sid 调用")
+
     def apply_sukisu_patches(self):
         logger.info("=== 应用 SukiSU 补丁 ===")
         self._chdir(self.work_dir / "common")
