@@ -489,13 +489,15 @@ endmenu
         if hide_c.exists():
             with open(hide_c, "r") as f:
                 content = f.read()
-            content = content.replace("#define __maybe_static static", "#define __maybe_static")
-            content = content.replace("static bool ksu_selinux_hide_enabled", "bool ksu_selinux_hide_enabled")
-            content = content.replace("static bool ksu_selinux_hide_running", "bool ksu_selinux_hide_running")
-            content = content.replace("static struct selinux_state fake_state;", "struct selinux_state fake_state;")
-            content = content.replace("static DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);", "DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);")
-            content = content.replace("static struct page *fake_status = NULL;", "struct page *fake_status = NULL;")
-            content = content.replace("static void initialize_fake_status()", "void initialize_fake_status()")
+            if "__maybe_static" in content:
+                content = content.replace("#define __maybe_static static", "#define __maybe_static")
+            else:
+                content = content.replace("static bool ksu_selinux_hide_enabled", "bool ksu_selinux_hide_enabled")
+                content = content.replace("static bool ksu_selinux_hide_running", "bool ksu_selinux_hide_running")
+                content = content.replace("static struct selinux_state fake_state;", "struct selinux_state fake_state;")
+                content = content.replace("static DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);", "DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);")
+                content = content.replace("static struct page *fake_status = NULL;", "struct page *fake_status = NULL;")
+                content = content.replace("static void initialize_fake_status()", "void initialize_fake_status()")
             with open(hide_c, "w") as f:
                 f.write(content)
             logger.info("已修补 KernelSU selinux_hide.c 符号可见性")
