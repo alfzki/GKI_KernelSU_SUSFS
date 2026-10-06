@@ -334,6 +334,96 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                 self._run_cmd(f"patch -p1 --fuzz=3 < {patch_file}", check=False)
                 self._chdir(self.work_dir)
 
+        ksu_kconfig = self.work_dir / "KernelSU/kernel/Kconfig"
+        if ksu_kconfig.exists():
+            with open(ksu_kconfig, "r") as f:
+                content = f.read()
+            if "CONFIG_KSU_SUSFS" not in content:
+                logger.info("向 KernelSU Kconfig 添加 SUSFS 配置定义...")
+                susfs_kconfig_block = """
+menu "KernelSU - SUSFS"
+config KSU_SUSFS
+	bool "KernelSU addon - SUSFS"
+	depends on KSU
+	default y
+	help
+	  Patch and Enable SUSFS to kernel with KernelSU.
+
+config KSU_SUSFS_SUS_PATH
+	bool "Enable to hide suspicious path"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_SUS_MOUNT
+	bool "Enable to hide suspicious mounts"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
+	bool "Auto add default mount for KSU"
+	depends on KSU_SUSFS_SUS_MOUNT
+	default y
+
+config KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
+	bool "Auto add bind mount for KSU"
+	depends on KSU_SUSFS_SUS_MOUNT
+	default y
+
+config KSU_SUSFS_SUS_KSTAT
+	bool "Enable to spoof suspicious kstat"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_SUS_MAP
+	bool "Enable to hide some mmapped real file from different proc maps interfaces"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_TRY_UMOUNT
+	bool "Enable to try umount"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
+	bool "Auto add try umount for bind mount"
+	depends on KSU_SUSFS_TRY_UMOUNT
+	default y
+
+config KSU_SUSFS_SPOOF_UNAME
+	bool "Enable to spoof uname"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_ENABLE_LOG
+	bool "Enable logging susfs log to kernel"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+	bool "Enable to automatically hide ksu and susfs symbols from /proc/kallsyms"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	bool "Enable to spoof /proc/bootconfig (gki) or /proc/cmdline (non-gki)"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_OPEN_REDIRECT
+	bool "Enable to redirect a path to be opened with another path"
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_SUS_SU
+	bool "Enable sus_su"
+	depends on KSU_SUSFS
+	default n
+
+endmenu
+"""
+                with open(ksu_kconfig, "a") as f:
+                    f.write(susfs_kconfig_block)
+
     def apply_sukisu_patches(self):
         logger.info("=== 应用 SukiSU 补丁 ===")
         self._chdir(self.work_dir / "common")
@@ -406,10 +496,23 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                 content = '\n'.join(new_lines)
                 logger.info("已添加 VMA_PAD_START 宏定义")
 
-        # ===== 修复 dentry 未初始化（如果还存在） =====
-        if "struct dentry *dentry;" in content:
-            content = content.replace("struct dentry *dentry;", "struct dentry *dentry = NULL;")
-            logger.info("已修复 dentry 未初始化问题")
+        # ===== 修复 dentry 声明与放置位置 =====
+        content = content.replace("struct dentry *dentry = NULL;", "struct dentry *dentry __maybe_unused = NULL;")
+        content = content.replace("struct dentry *dentry;", "struct dentry *dentry __maybe_unused = NULL;")
+
+        dentry_pattern = r"(\s*dentry = file->f_path\.dentry;.*?goto bypass;\s*\}\s*\})\s*(seq_puts\(m, spoofed_redirected_name\);)"
+        m = re.search(dentry_pattern, content, re.DOTALL)
+        if m:
+            extracted_dentry = m.group(1).strip()
+            content = content[:m.start(1)] + "\n\t\t\t\t\t" + m.group(2) + content[m.end(2):]
+            insert_target = re.search(r"(\n\t\}\n\n\tstart = vma->vm_start;)", content)
+            if insert_target:
+                indented = "\n" + "\n".join("\t\t" + l.strip() for l in extracted_dentry.split("\n")) + "\n"
+                content = content[:insert_target.start(1)] + indented + content[insert_target.start(1):]
+                logger.info("已修复 task_mmu.c 中 dentry 检查的放置位置")
+
+        # ===== 修复 bypass 标签未被使用警告 =====
+        content = re.sub(r"(\n\s*bypass:)\s*\n", r"\1 __maybe_unused;\n", content)
 
         # ===== 写入修改 =====
         with open(task_mmu, "w") as f:
