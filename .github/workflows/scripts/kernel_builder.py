@@ -915,19 +915,24 @@ CONFIG_PPP_DEFLATE=m
 
         setlocalversion = self.work_dir / "common/scripts/setlocalversion"
         if setlocalversion.exists():
-            with open(setlocalversion, "r") as f:
-                content = f.read()
             if target_localversion:
-                s_lines = content.splitlines()
-                for i, line in enumerate(s_lines):
-                    if 'echo "$res"' in line and not line.strip().startswith('#'):
-                        s_lines[i] = f"\techo \"{target_localversion}\""
-                        break
-                content = "\n".join(s_lines)
-            if "-dirty" in content:
-                content = content.replace("-dirty", "")
-            with open(setlocalversion, "w") as f:
-                f.write(content)
+                script_content = f"""#!/bin/sh
+if test "$1" = "--save-scmversion"; then
+    printf '%s\\n' "{target_localversion}" > .scmversion
+    exit 0
+fi
+printf '%s\\n' "{target_localversion}"
+"""
+                with open(setlocalversion, "w") as f:
+                    f.write(script_content)
+                os.chmod(setlocalversion, 0o755)
+            else:
+                with open(setlocalversion, "r") as f:
+                    content = f.read()
+                if "-dirty" in content:
+                    content = content.replace("-dirty", "")
+                with open(setlocalversion, "w") as f:
+                    f.write(content)
 
         import datetime
         current_time = datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S UTC %Y")
