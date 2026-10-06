@@ -66,6 +66,8 @@ ANDROID_KERNEL_MAP = {
 # 仓库配置
 KSU_REPO_CONFIG = {"repo_url": "https://github.com/SukiSU-Ultra/SukiSU-Ultra.git",
                     "branch": "main",
+                    "tag": "v4.2.0",
+                    "version": "40900",
                     "setup_script": "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh"}
 
 # SUSFS 仓库配置

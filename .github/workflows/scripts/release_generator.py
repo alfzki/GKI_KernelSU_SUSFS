@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).parent))
-from config import KERNEL_VERSION
+from config import KERNEL_VERSION, KSU_REPO_CONFIG
 
 
 class ReleaseGenerator:
@@ -29,23 +29,25 @@ class ReleaseGenerator:
             return {}
 
     def get_ksu_info(self) -> tuple:
-        ksu_tag, ksu_commit = "latest", "unknown"
+        ksu_tag = KSU_REPO_CONFIG.get("tag", "v4.2.0")
+        ksu_version = KSU_REPO_CONFIG.get("version", "40900")
+        ksu_commit = "unknown"
         tags = self._fetch_json("https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/git/refs/tags")
-        if tags:
+        if tags and isinstance(tags, list):
             ksu_tag = tags[-1]['ref'].split('/')[-1]
         ref = self._fetch_json("https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/git/ref/heads/main")
-        if ref:
+        if ref and isinstance(ref, dict) and 'object' in ref:
             ksu_commit = ref['object']['sha'][:7]
-        return ksu_tag, ksu_commit
+        return ksu_tag, ksu_commit, ksu_version
 
     def generate_body(self) -> str:
         matrix = self.load_matrix()
-        ksu_tag, ksu_commit = self.get_ksu_info()
+        ksu_tag, ksu_commit, ksu_version = self.get_ksu_info()
         configs = [f"- Android {k.split('-')[0].replace('android', '')} (Kernel {k.split('-')[1]})" for k in sorted(matrix.keys())]
         return '\n'.join([
             f"## GKI Kernel with SukiSU & SUSFS {KERNEL_VERSION}", "",
             "### SukiSU Info",
-            f"- Tag: `{ksu_tag}`",
+            f"- Tag: `{ksu_tag}` ({ksu_version})",
             f"- Commit: `{ksu_commit}`", "",
             "### Supported Configurations",
             *configs, "",

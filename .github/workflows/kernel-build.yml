@@ -43,7 +43,7 @@ on:
         type: string
         default: ''
       kernelsu_version:
-        description: 'SukiSU 版本'
+        description: 'SukiSU 版本 (Stable 默认 v4.2.0 / 40900)'
         required: true
         type: choice
         options:

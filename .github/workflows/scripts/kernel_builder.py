@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Callable
 from dataclasses import dataclass, field
 
-from config import (BuildConfig, KSU_REPO_CONFIG, SUSFS_REPO_CONFIG, SUKISU_PATCH_REPO_CONFIG,
+from config import (BuildConfig, KSUVersion, KSU_REPO_CONFIG, SUSFS_REPO_CONFIG, SUKISU_PATCH_REPO_CONFIG,
                    ANYKERNEL_CONFIG, KERNEL_PATCHES_CONFIG, BBG_CONFIG, NETHUNTER_REPO_CONFIG,
                    TOOLCHAIN_CONFIG, LEGACY_FIXES, OP8E_PATCH_URL, KPM_PATCH_URL)
 
@@ -255,15 +255,35 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
     def add_kernelsu(self):
         logger.info("=== 添加 KernelSU ===")
         self._chdir(self.work_dir)
-        setup_url = (f"https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/{self.config.kernelsu_commit}/kernel/setup.sh"
-                    if self.config.kernelsu_commit else KSU_REPO_CONFIG["setup_script"])
-        self._run_cmd(f"curl -LSs {setup_url} | bash -s builtin", check=False)
+
         if self.config.kernelsu_commit:
-            ksu_dir = self.work_dir / "KernelSU"
-            if ksu_dir.exists():
-                self._chdir(ksu_dir)
-                self._run_cmd(f"git checkout {self.config.kernelsu_commit}", check=False)
-                self._chdir(self.work_dir)
+            ksu_target = self.config.kernelsu_commit
+        elif self.config.kernelsu_version == KSUVersion.DEV.value:
+            ksu_target = KSU_REPO_CONFIG.get("branch", "main")
+        else:
+            ksu_target = KSU_REPO_CONFIG.get("tag", "v4.2.0")
+
+        logger.info(f"使用 SukiSU-Ultra 目标: {ksu_target}")
+        setup_url = (f"https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/{ksu_target}/kernel/setup.sh"
+                    if self.config.kernelsu_commit else KSU_REPO_CONFIG["setup_script"])
+        self._run_cmd(f"curl -LSs {setup_url} | bash -s {ksu_target}", check=False)
+
+        ksu_dir = self.work_dir / "KernelSU"
+        if ksu_dir.exists():
+            self._chdir(ksu_dir)
+            self._run_cmd(f"git checkout {ksu_target}", check=False)
+            kbuild_path = ksu_dir / "kernel/Kbuild"
+            if kbuild_path.exists():
+                with open(kbuild_path, "r") as f:
+                    content = f.read()
+                if ksu_target in ["v4.2.0", "40900"] or self.config.kernelsu_version == KSUVersion.STABLE.value:
+                    content = re.sub(r'KSU_VERSION\s*:=.*', 'KSU_VERSION := 40900', content)
+                    content = content.replace("REPO_BRANCH := main", "REPO_BRANCH := v4.2.0")
+                elif ksu_target:
+                    content = content.replace("REPO_BRANCH := main", f"REPO_BRANCH := {ksu_target}")
+                with open(kbuild_path, "w") as f:
+                    f.write(content)
+            self._chdir(self.work_dir)
 
     def add_bbg(self):
         if not self.config.use_bbg:
