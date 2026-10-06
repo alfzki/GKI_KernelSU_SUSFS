@@ -390,7 +390,7 @@ extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
         if ksu_kconfig.exists():
             with open(ksu_kconfig, "r") as f:
                 content = f.read()
-            if "CONFIG_KSU_SUSFS" not in content:
+            if "config KSU_SUSFS" not in content and "CONFIG_KSU_SUSFS" not in content:
                 logger.info("向 KernelSU Kconfig 添加 SUSFS 配置定义...")
                 susfs_kconfig_block = """
 menu "KernelSU - SUSFS"
@@ -479,10 +479,16 @@ endmenu
         self.patch_kernelsu_for_susfs()
 
     def patch_kernelsu_for_susfs(self):
-        logger.info("=== 修补 KernelSU 以支持 SUSFS ===")
         ksu_dir = self.work_dir / "KernelSU"
         if not ksu_dir.exists():
             return
+
+        # 如果 KernelSU 已经内置原生 SUSFS 支持（如 ReSukiSU），则无需额外修补
+        if (ksu_dir / "kernel/tools/susfs_compat.mk").exists():
+            logger.info("检测到 KernelSU 原生支持 SUSFS (ReSukiSU)，跳过附加修补")
+            return
+
+        logger.info("=== 修补 KernelSU 以支持 SUSFS ===")
 
         # 1. 修补 selinux_hide.c (导出 SUSFS 所需的符号)
         hide_c = ksu_dir / "kernel/feature/selinux_hide.c"
@@ -618,16 +624,19 @@ void susfs_set_batch_sid(void)
                     f.write(content)
                 logger.info("已向 KernelSU selinux.c 添加 SUSFS SID 支持")
 
-        # 4. 修补 rules.c (在重置 AVC 缓存后调用 susfs_set_batch_sid)
+        # 4. 修补 rules.c (在重置 AVC 缓存后调用 susfs_set_batch_sid，仅当已定义该函数时)
         rules_c = ksu_dir / "kernel/selinux/rules.c"
-        if rules_c.exists():
-            with open(rules_c, "r") as f:
-                content = f.read()
-            if "susfs_set_batch_sid();" not in content:
-                content = content.replace("reset_avc_cache();", "reset_avc_cache();\n    susfs_set_batch_sid();")
-                with open(rules_c, "w") as f:
-                    f.write(content)
-                logger.info("已向 KernelSU rules.c 添加 susfs_set_batch_sid 调用")
+        if rules_c.exists() and sel_h.exists():
+            with open(sel_h, "r") as f:
+                h_content = f.read()
+            if "susfs_set_batch_sid" in h_content:
+                with open(rules_c, "r") as f:
+                    content = f.read()
+                if "susfs_set_batch_sid();" not in content:
+                    content = content.replace("reset_avc_cache();", "reset_avc_cache();\n    susfs_set_batch_sid();")
+                    with open(rules_c, "w") as f:
+                        f.write(content)
+                    logger.info("已向 KernelSU rules.c 添加 susfs_set_batch_sid 调用")
 
     def apply_sukisu_patches(self):
         logger.info("=== 应用 SukiSU 补丁 ===")
