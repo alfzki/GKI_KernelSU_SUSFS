@@ -207,6 +207,19 @@ jobs:
           sha256sum artifacts/* > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.make_release == 'true' && success() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ github.event.inputs.android_version }}-${{ github.event.inputs.kernel_version }}.${{ github.event.inputs.sub_level }}-${{ github.event.inputs.os_patch_level }}"
+          [ -n "${{ github.event.inputs.custom_version }}" ] && TAG_NAME="${TAG_NAME}-${{ github.event.inputs.custom_version }}"
+          TITLE="Kernel ${{ github.event.inputs.kernel_version }}.${{ github.event.inputs.sub_level }} (${{ github.event.inputs.android_version }})"
+          gh release create "$TAG_NAME" artifacts/* SHA256SUMS.txt \
+            --title "$TITLE" \
+            --notes "Automated GKI Kernel build for ${{ github.event.inputs.android_version }} (Kernel ${{ github.event.inputs.kernel_version }}.${{ github.event.inputs.sub_level }}) with SukiSU-Ultra & SUSFS" \
+            || gh release upload "$TAG_NAME" artifacts/* SHA256SUMS.txt --clobber
+
       - name: Send Telegram Notification
         if: ${{ github.event.inputs.send_telegram == 'true' && success() }}
         env:

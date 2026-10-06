@@ -334,6 +334,54 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                 self._run_cmd(f"patch -p1 --fuzz=3 < {patch_file}", check=False)
                 self._chdir(self.work_dir)
 
+        # 检查并修复 fs/namespace.c 中可能因 context 差异导致未能打上的 SUSFS 声明
+        namespace_c = common_dir / "fs/namespace.c"
+        if namespace_c.exists():
+            with open(namespace_c, "r") as f:
+                ns_content = f.read()
+            if "susfs_def.h" not in ns_content:
+                logger.info("修复 fs/namespace.c: 补全缺失的 SUSFS 头文件引用与声明...")
+                if "#include <linux/mnt_idmapping.h>" in ns_content:
+                    ns_content = ns_content.replace(
+                        "#include <linux/mnt_idmapping.h>",
+                        "#include <linux/mnt_idmapping.h>\n#ifdef CONFIG_KSU_SUSFS\n#include <linux/susfs_def.h>\n#endif // #ifdef CONFIG_KSU_SUSFS",
+                        1
+                    )
+                elif "#include <linux/fs_context.h>" in ns_content:
+                    ns_content = ns_content.replace(
+                        "#include <linux/fs_context.h>",
+                        "#include <linux/fs_context.h>\n#ifdef CONFIG_KSU_SUSFS\n#include <linux/susfs_def.h>\n#endif // #ifdef CONFIG_KSU_SUSFS",
+                        1
+                    )
+                if 'extern bool susfs_is_current_ksu_domain(void);' not in ns_content:
+                    target = '#include "internal.h"'
+                    susfs_mount_decl = """#include "internal.h"
+
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+extern bool susfs_is_current_ksu_domain(void);
+extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
+
+#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT"""
+                    if target in ns_content:
+                        ns_content = ns_content.replace(target, susfs_mount_decl, 1)
+                    elif '#include "pnode.h"' in ns_content:
+                        ns_content = ns_content.replace(
+                            '#include "pnode.h"',
+                            '#include "pnode.h"\n\n' + susfs_mount_decl.replace('#include "internal.h"\n\n', ''),
+                            1
+                        )
+                with open(namespace_c, "w") as f:
+                    f.write(ns_content)
+                rej_file = common_dir / "fs/namespace.c.rej"
+                if rej_file.exists():
+                    rej_file.unlink()
+                logger.info("已成功补全 fs/namespace.c 的 SUSFS 声明")
+
+        rej_files = list(common_dir.glob("**/*.rej"))
+        if rej_files:
+            logger.warning(f"检测到未解决的补丁拒绝文件: {[str(p.relative_to(common_dir)) for p in rej_files]}")
+
         ksu_kconfig = self.work_dir / "KernelSU/kernel/Kconfig"
         if ksu_kconfig.exists():
             with open(ksu_kconfig, "r") as f:
