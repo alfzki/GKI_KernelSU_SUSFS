@@ -79,8 +79,8 @@ python build.py --list-matrix
 |------|------|--------|
 | `--android`, `-a` | Android 版本 (android12/13/14/15) | android14 |
 | `--kernel`, `-k` | Kernel 版本 (5.10/5.15/6.1/6.6) | 6.1 |
-| `--sub-level`, `-s` | Sub level 版本或 X (LTS) | 176 |
-| `--os-patch` | OS Patch Level | 2026-09 |
+| `--sub-level`, `-s` | Sub level 版本或 X (LTS) | 138 |
+| `--os-patch` | OS Patch Level | 2025-06 |
 | `--revision` | Android 12 Revision | - |
 | `--ksu-version` | ReSukiSU 版本 (Stable: v4.2.0-rc3 / 35171, Dev) | Stable(标准) |
 | `--ksu-commit` | 指定 ReSukiSU commit hash | latest |

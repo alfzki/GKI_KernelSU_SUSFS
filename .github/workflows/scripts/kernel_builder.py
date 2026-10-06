@@ -225,6 +225,18 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         common_dir = self.work_dir / "common"
         if not common_dir.exists():
             raise RuntimeError("repo sync 失败，common 目录不存在")
+
+        if self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "138":
+            logger.info("检出指定 commit/tag 0c3d559bcd85 (android14-6.1-2025-06_r15)...")
+            self._chdir(common_dir)
+            self._run_cmd("git fetch --depth=1 https://android.googlesource.com/kernel/common refs/tags/android14-6.1-2025-06_r15 && git checkout -f FETCH_HEAD", check=False)
+            self._chdir(self.work_dir)
+        elif self.config.revision:
+            logger.info(f"检出 revision: {self.config.revision}...")
+            self._chdir(common_dir)
+            self._run_cmd(f"git fetch --depth=1 https://android.googlesource.com/kernel/common refs/tags/{formatted_branch}_{self.config.revision} && git checkout -f FETCH_HEAD", check=False)
+            self._chdir(self.work_dir)
+
         self._apply_legacy_fixes(remote)
         logger.info("=== 内核源代码同步完成 ===")
 
@@ -883,27 +895,39 @@ CONFIG_PPP_DEFLATE=m
     def configure_kernel_name(self):
         logger.info("=== 配置内核名称 ===")
         self._chdir(self.work_dir)
-        MAX_CUSTOM_LEN = 48
-        safe_custom_version = ""
+        MAX_CUSTOM_LEN = 64
+
+        # 确定目标 localversion 后缀 (例如 -android14-11-g0c3d559bcd85-ab14529422)
+        target_localversion = ""
         if self.config.custom_version:
-            safe_custom_version = self.config.custom_version.rstrip('-')[:MAX_CUSTOM_LEN]
+            cv = self.config.custom_version.strip()
+            prefix = f"{self.config.kernel_version}.{self.config.sub_level}"
+            if cv.startswith(prefix):
+                cv = cv[len(prefix):]
+            if not cv.startswith("-"):
+                cv = "-" + cv
+            target_localversion = cv[:MAX_CUSTOM_LEN]
+        elif self.config.android_version == "android14" and self.config.kernel_version == "6.1" and self.config.sub_level == "138":
+            target_localversion = "-android14-11-g0c3d559bcd85-ab14529422"
+
+        if target_localversion:
+            logger.info(f"设置目标内核版本后缀: {target_localversion}")
 
         setlocalversion = self.work_dir / "common/scripts/setlocalversion"
         if setlocalversion.exists():
             with open(setlocalversion, "r") as f:
                 content = f.read()
-            if safe_custom_version:
-                lines = content.split('\n')
-                for i, line in enumerate(lines):
+            if target_localversion:
+                s_lines = content.splitlines()
+                for i, line in enumerate(s_lines):
                     if 'echo "$res"' in line and not line.strip().startswith('#'):
-                        lines[i] = f'\techo "{safe_custom_version}$res"'
+                        s_lines[i] = f"\techo \"{target_localversion}\""
                         break
-                with open(setlocalversion, "w") as f:
-                    f.write('\n'.join(lines))
+                content = "\n".join(s_lines)
             if "-dirty" in content:
                 content = content.replace("-dirty", "")
-                with open(setlocalversion, "w") as f:
-                    f.write(content)
+            with open(setlocalversion, "w") as f:
+                f.write(content)
 
         import datetime
         current_time = datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S UTC %Y")
@@ -949,20 +973,11 @@ CONFIG_PPP_DEFLATE=m
             if stamp_bzl.exists():
                 with open(stamp_bzl, "r") as f:
                     content = f.read()
+                if target_localversion:
+                    content = content.replace("echo $scmversion", f'echo "{target_localversion}"')
                 content = content.replace("-maybe-dirty", "")
                 with open(stamp_bzl, "w") as f:
                     f.write(content)
-
-            if self.config.custom_version:
-                config_file = self.work_dir / "common/arch/arm64/configs/gki_defconfig"
-                if config_file.exists():
-                    with open(config_file, "r") as f:
-                        content = f.read()
-                    content = re.sub(r'^CONFIG_LOCALVERSION=".*"$', f'CONFIG_LOCALVERSION="{self.config.custom_version}"', content, flags=re.MULTILINE)
-                    with open(config_file, "w") as f:
-                        f.write(content)
-                else:
-                    logger.warning(f"配置文件不存在，跳过 custom_version 设置: {config_file}")
 
     def show_kernel_config(self):
         logger.info("=== 显示内核配置列表 ===")
