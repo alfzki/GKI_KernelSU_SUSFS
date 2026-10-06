@@ -1137,18 +1137,47 @@ printf '%s\\n' "{target_localversion}"
         if (bootimgs_dir / "Image").exists():
             self._run_cmd("gzip -n -k -f -9 Image", check=False)
 
-        for kernel_file, output_file in [("Image", "boot.img"), ("Image.gz", "boot-gz.img"), ("Image.lz4", "boot-lz4.img")]:
-            kernel_path = bootimgs_dir / kernel_file
-            if not kernel_path.exists():
-                continue
-            cmd = f"$MKBOOTIMG --header_version 4 --kernel {kernel_file} --output {output_file}"
-            if has_ramdisk:
-                cmd += f" --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level {self.config.os_patch_level}"
-            self._run_cmd(cmd, check=False)
-            self._run_cmd(f"$AVBTOOL add_hash_footer --partition_name boot --partition_size $((64 * 1024 * 1024)) --image {output_file} --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH", check=False)
-            dest = self.work_dir / f"{self.config.android_version}-{self.config.kernel_version}.{self.config.sub_level}-{self.config.os_patch_level}-{output_file}"
-            self._run_cmd(f"cp {output_file} {dest}", check=False)
-            artifacts.append(str(dest))
+        # Parse requested partition sizes (default: 96MB, or both 64MB and 96MB)
+        boot_size_cfg = getattr(self.config, 'boot_partition_size', '96')
+        if boot_size_cfg == "both":
+            target_sizes = [64, 96]
+        else:
+            try:
+                target_sizes = [int(boot_size_cfg)]
+            except (ValueError, TypeError):
+                target_sizes = [96]
+
+        prefix = f"{self.config.android_version}-{self.config.kernel_version}.{self.config.sub_level}-{self.config.os_patch_level}"
+
+        for size in target_sizes:
+            for kernel_file, output_file in [("Image", "boot.img"), ("Image.gz", "boot-gz.img"), ("Image.lz4", "boot-lz4.img")]:
+                kernel_path = bootimgs_dir / kernel_file
+                if not kernel_path.exists():
+                    continue
+
+                temp_output = f"{output_file}.tmp"
+                cmd = f"$MKBOOTIMG --header_version 4 --kernel {kernel_file} --output {temp_output}"
+                if has_ramdisk:
+                    cmd += f" --ramdisk out/ramdisk --os_version 12.0.0 --os_patch_level {self.config.os_patch_level}"
+                self._run_cmd(cmd, check=False)
+                self._run_cmd(
+                    f"$AVBTOOL add_hash_footer --partition_name boot --partition_size $(({size} * 1024 * 1024)) "
+                    f"--image {temp_output} --algorithm SHA256_RSA2048 --key $BOOT_SIGN_KEY_PATH",
+                    check=False
+                )
+
+                # Save size-tagged image (e.g. boot-96m.img)
+                dest_size = self.work_dir / f"{prefix}-{output_file.replace('.img', f'-{size}m.img')}"
+                self._run_cmd(f"cp {temp_output} {dest_size}", check=False)
+                artifacts.append(str(dest_size))
+
+                # Also save standard image (boot.img) for primary size
+                if size == target_sizes[-1]:
+                    dest_standard = self.work_dir / f"{prefix}-{output_file}"
+                    self._run_cmd(f"cp {temp_output} {dest_standard}", check=False)
+                    artifacts.append(str(dest_standard))
+
+                self._run_cmd(f"rm -f {temp_output}", check=False)
 
     def create_anykernel_zips(self) -> list:
         logger.info("=== 创建 AnyKernel3 ZIP 文件 ===")

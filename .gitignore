@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 matrix_summary.md
 RELEASE_BODY.md
+boot_test/
+boot_test_162/
+kernel_backups/

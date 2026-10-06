@@ -120,12 +120,14 @@ class BuildConfig:
     custom_version: Optional[str] = None
     revision: Optional[str] = None
     build_id: Optional[str] = None
+    boot_partition_size: str = "96"
 
     def __post_init__(self):
         self._validate_android_version()
         self._validate_kernel_version()
         self._validate_kernel_android_compat()
         self._validate_sub_level()
+        self._validate_boot_partition_size()
         self._set_build_id()
 
     def _validate_android_version(self):
@@ -147,6 +149,10 @@ class BuildConfig:
     def _validate_sub_level(self):
         if self.sub_level != "X" and not self.sub_level.isdigit():
             raise ValueError(f"无效的 sub_level: {self.sub_level}")
+
+    def _validate_boot_partition_size(self):
+        if self.boot_partition_size != "both" and not self.boot_partition_size.isdigit():
+            raise ValueError(f"无效的 boot_partition_size: {self.boot_partition_size}. 支持: 64, 96, 128, both")
 
     def _set_build_id(self):
         if self.build_id is None:
@@ -191,6 +197,7 @@ class BuildConfig:
             "custom_version": self.custom_version,
             "revision": self.revision,
             "build_id": self.build_id,
+            "boot_partition_size": self.boot_partition_size,
         }
 
 

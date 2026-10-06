@@ -91,6 +91,7 @@ python build.py --list-matrix
 | `--nethunter` | 启用 Kali NetHunter (实验性/已知可能损坏) | False |
 | `--op8e` | 启用 OnePlus 8E 支持 | False |
 | `--bbr` | 设置 BBR 为默认拥塞算法 | False |
+| `--boot-size` | Boot 分区大小 (MB, 常见: 96 或 64, both 为同时生成 64MB 和 96MB) | 96 |
 | `--no-release` | 不创建 GitHub Release | False |
 | `--custom-version` | 自定义版本名称 | - |
 | `--matrix`, `-m` | 使用预定义矩阵 | - |

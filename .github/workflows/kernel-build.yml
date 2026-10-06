@@ -95,6 +95,16 @@ on:
         required: true
         type: boolean
         default: false
+      boot_partition_size:
+        description: 'Boot 分区大小 (MB, 常见: 96 或 64, both 为同时生成 64MB 和 96MB)'
+        required: true
+        type: choice
+        options:
+          - "96"
+          - "64"
+          - "128"
+          - "both"
+        default: "96"
       make_release:
         description: '创建 GitHub Release'
         required: true
@@ -185,6 +195,7 @@ jobs:
           [ -z "${{ github.event.inputs.kernelsu_commit }}" ] || ARGS="$ARGS --ksu-commit=${{ github.event.inputs.kernelsu_commit }}"
           [ -z "${{ github.event.inputs.susfs_commit }}" ] || ARGS="$ARGS --susfs-commit=${{ github.event.inputs.susfs_commit }}"
           [ -z "${{ github.event.inputs.custom_version }}" ] || ARGS="$ARGS --custom-version=${{ github.event.inputs.custom_version }}"
+          [ -n "${{ github.event.inputs.boot_partition_size }}" ] && ARGS="$ARGS --boot-partition-size=${{ github.event.inputs.boot_partition_size }}"
           [ "${{ github.event.inputs.make_release }}" = "true" ] || ARGS="$ARGS --no-release"
 
           python3 build.py $ARGS
