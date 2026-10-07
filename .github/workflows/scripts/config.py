@@ -116,6 +116,7 @@ class BuildConfig:
     use_nethunter: bool = False
     support_op8e: bool = False
     set_default_bbr: bool = False
+    use_droidspaces: bool = True
     make_release: bool = True
     custom_version: Optional[str] = None
     revision: Optional[str] = None
@@ -193,6 +194,7 @@ class BuildConfig:
             "use_nethunter": self.use_nethunter,
             "support_op8e": self.support_op8e,
             "set_default_bbr": self.set_default_bbr,
+            "use_droidspaces": self.use_droidspaces,
             "make_release": self.make_release,
             "custom_version": self.custom_version,
             "revision": self.revision,

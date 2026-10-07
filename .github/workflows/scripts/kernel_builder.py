@@ -97,6 +97,24 @@ CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
 CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
 """
 
+    DROIDSPACES_CONFIG = """
+# === Droidspaces & Container Isolation Config ===
+CONFIG_PID_NS=y
+CONFIG_USER_NS=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y
+CONFIG_IP6_NF_NAT=y
+CONFIG_IP6_NF_TARGET_MASQUERADE=y
+CONFIG_NETFILTER_XT_TARGET_REJECT=y
+CONFIG_NETFILTER_XT_TARGET_LOG=y
+CONFIG_NETFILTER_XT_MATCH_RECENT=y
+CONFIG_IP_SET=y
+CONFIG_IP_SET_HASH_IP=y
+CONFIG_IP_SET_HASH_NET=y
+CONFIG_NETFILTER_XT_SET=y
+"""
+
     ZRAM_CONFIG_5_10 = "CONFIG_ZSMALLOC=y\nCONFIG_ZRAM=y\nCONFIG_MODULE_SIG=n\nCONFIG_CRYPTO_LZO=y\nCONFIG_ZRAM_DEF_COMP_LZ4KD=y\n"
     ZRAM_CONFIG_COMMON = "CONFIG_CRYPTO_LZ4HC=y\nCONFIG_CRYPTO_LZ4K=y\nCONFIG_CRYPTO_LZ4KD=y\nCONFIG_CRYPTO_842=y\nCONFIG_CRYPTO_LZ4K_OPLUS=y\nCONFIG_ZRAM_WRITEBACK=y\n"
 
@@ -809,6 +827,9 @@ void susfs_set_batch_sid(void)
             with open(config_file, "a") as f:
                 f.write("CONFIG_DEFAULT_BBR=y\n")
 
+        if getattr(self.config, 'use_droidspaces', True):
+            self._configure_droidspaces()
+
         build_config = self.work_dir / "common/build.config.gki"
         if build_config.exists():
             with open(build_config, "r") as f:
@@ -816,6 +837,31 @@ void susfs_set_batch_sid(void)
             content = content.replace("check_defconfig", "")
             with open(build_config, "w") as f:
                 f.write(content)
+
+    def _configure_droidspaces(self):
+        logger.info("=== 配置 Droidspaces & 容器隔离内核支持 ===")
+        config_file = self.work_dir / "common/arch/arm64/configs/gki_defconfig"
+        if not config_file.exists():
+            return
+        with open(config_file, "r") as f:
+            content = f.read()
+
+        replacements = {
+            "# CONFIG_PID_NS is not set": "CONFIG_PID_NS=y",
+            "# CONFIG_USER_NS is not set": "CONFIG_USER_NS=y",
+            "# CONFIG_DEVTMPFS is not set": "CONFIG_DEVTMPFS=y\nCONFIG_DEVTMPFS_MOUNT=y",
+        }
+        for old, new in replacements.items():
+            if old in content:
+                content = content.replace(old, new)
+            elif new.split('\n')[0] not in content:
+                content += f"\n{new}"
+
+        with open(config_file, "w") as f:
+            f.write(content)
+
+        with open(config_file, "a") as f:
+            f.write(self.DROIDSPACES_CONFIG)
 
     def _configure_nethunter(self):
         logger.info("=== 配置 Kali NetHunter ===")
@@ -1019,6 +1065,11 @@ printf '%s\\n' "{target_localversion}"
             key_configs["CONFIG_BT"] = "NetHunter BT"
             key_configs["CONFIG_TUN"] = "NetHunter TUN"
             key_configs["CONFIG_PPP"] = "NetHunter PPP"
+
+        if getattr(self.config, 'use_droidspaces', True):
+            key_configs["CONFIG_PID_NS"] = "PID Namespace (Droidspaces)"
+            key_configs["CONFIG_USER_NS"] = "User Namespace (Droidspaces)"
+            key_configs["CONFIG_DEVTMPFS"] = "devtmpfs (Droidspaces)"
         
         logger.info("关键配置状态:")
         for prefix, name in key_configs.items():

@@ -63,6 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nethunter", action="store_true", default=False, help="启用 Kali NetHunter (实验性/已知可能损坏)")
     parser.add_argument("--op8e", action="store_true")
     parser.add_argument("--bbr", action="store_true")
+    parser.add_argument("--no-droidspaces", action="store_true", help="禁用 Droidspaces & 容器隔离内核配置")
     parser.add_argument("--no-release", action="store_true")
     parser.add_argument("--custom-version", dest="custom_version", default=None)
     parser.add_argument("--boot-size", "--boot-partition-size", dest="boot_partition_size", default="96",
@@ -95,6 +96,7 @@ def create_build_config(args: argparse.Namespace) -> BuildConfig:
         use_nethunter=getattr(args, 'nethunter', False),
         support_op8e=args.op8e,
         set_default_bbr=args.bbr,
+        use_droidspaces=not getattr(args, 'no_droidspaces', False),
         make_release=not args.no_release,
         custom_version=args.custom_version,
         revision=args.revision,
